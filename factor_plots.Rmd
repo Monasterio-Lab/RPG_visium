@@ -1,0 +1,487 @@
+---
+title: "Untitled"
+author: "Ludvig Larsson"
+date: "2022-10-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load libraries
+
+```{r warning=FALSE, message=FALSE}
+library(STutility)
+library(dplyr)
+library(magrittr)
+library(tidyr)
+library(patchwork)
+library(ggplot2)
+library(zeallot)
+library(tibble)
+```
+
+Read Seurat object
+
+```{r}
+
+se.VAC.d0 <- readRDS(file = "../../R_objects/se.VAC.d0")
+
+```
+
+Select colors for plotting
+
+```{r}
+
+c(oral_col, nasal_col, retropharynx_col, esophagus_col, stomach_col) %<-% c("#332288", "#88CCEE", "#117733", "#DDCC77", "#CC6677") #c("yellow", "orange", "red", "darkred", "black")
+
+```
+
+Make plots
+
+```{r}
+
+plot_factors <- function(object, fctrs, cols, ncol = 3, pt_size = 0.6) {
+  
+  # Select relevant data and split into a list
+  gg_list <- cbind(object[[]], GetStaffli(object)@meta.data, FetchData(object, vars = fctrs)) |>
+    pivot_longer(all_of(fctrs), names_to = "variable", values_to = "value") |>
+    select(pixel_x, pixel_y, variable, value) |>
+    group_by(variable) |>
+    group_split() |>
+    setNames(nm = fctrs)
+  
+  # Create plots, one per element in gg_list
+  listLength <- length(gg_list)
+  plots <- lapply(seq_along(gg_list), function(i) {
+    gg <- gg_list[[i]] |> 
+      arrange(value)
+    p <- ggplot(gg, aes(pixel_x, pixel_y, color = value)) +
+      geom_point(size = pt_size) +
+      scale_y_reverse() +
+      coord_fixed() +
+      theme_void() +
+      scale_color_gradientn(colours = cols) +
+      ggtitle(paste0(gsub(pattern = "factor_", replacement = "factor_n", x = fctrs[i]))) +
+      theme(plot.title = element_text(hjust = 0.5, size = 15))
+    if (listLength != i) {
+      p <- p + theme(legend.position = "none")
+    } else {
+      p <- p + theme(legend.text = element_blank(), legend.title = element_blank())
+    }
+    #p <- ggrastr::rasterize(p, layers = "Point", dpi = 300, dev = "ragg")
+    return(p)
+  })
+  
+  if (ncol > length(plots)) {
+    plots <- c(plots, replicate(n = ncol - length(plots), expr = list(plot_spacer())))
+  }
+  
+  # Create patchwork
+  p_patchwork <- wrap_plots(plots, ncol = ncol)
+  
+  return(p_patchwork)
+}
+
+```
+
+Create spatial plots with `plot_factors`
+
+```{r fig.width=6, fig.height=8}
+
+grey_col <- rgb(230, 230, 230, maxColorValue = 255)
+
+# Plot oral factors
+oral_factors <- paste0("factor_", c(20, 31, 35))
+p_oral <- plot_factors(object = se.VAC.d0, fctrs = oral_factors, cols = c(grey_col, oral_col), ncol = 3)
+
+# Plot oral factors
+esophagus_factors <- paste0("factor_", c(29, 40, 43))
+p_esophagus <- plot_factors(object = se.VAC.d0, fctrs = esophagus_factors, cols = c(grey_col, esophagus_col), ncol = 3)
+
+# Plot stomach factors
+stomach_factors <- paste0("factor_", c(26, 3, 41))
+p_stomach <- plot_factors(object = se.VAC.d0, fctrs = stomach_factors, cols = c(grey_col, stomach_col), ncol = 3)
+
+# Patch plots
+p_selected_factors <- wrap_plots(p_oral, p_esophagus, p_stomach, ncol = 1)
+p_selected_factors
+
+```
+
+```{r}
+
+# Export plot
+svg(filename = "selected_factors.svg", width = 10, height = 10)
+print(p_selected_factors)
+dev.off()
+
+```
+
+Create factor loadings plot
+
+```{r fig.height=}
+
+nmf_loadings <- se.VAC.d0[["NMF"]]@feature.loadings
+
+# Select genes
+sel_data <- nmf_loadings[, c(oral_factors, esophagus_factors, stomach_factors)] |>
+  as.data.frame() |>
+  rownames_to_column(var = "gene") |>
+  as_tibble() |>
+  pivot_longer(where(is.numeric), names_to = "variable", values_to = "value") |>
+  mutate(variable = factor(variable, levels = c(oral_factors, esophagus_factors, stomach_factors)))
+
+sel_genes <- sel_data |>
+  group_by(variable) |>
+  arrange(-value) |>
+  slice_head(n = 5)
+
+# Select data
+filtered_data <- sel_data |> 
+  filter(gene %in% sel_genes$gene)  |>
+  mutate(gene = factor(gene, levels = unique(sel_genes$gene) |> rev())) |>
+  group_by(variable) |>
+  arrange(variable, -value) |>
+  mutate(value = value/max(value)) |>
+  mutate(group = case_when(
+    variable %in% oral_factors ~ "oral",
+    variable %in% esophagus_factors ~ "esophagus",
+    variable %in% stomach_factors ~ "stomach",
+  )) |>
+  mutate(group = factor(group, levels = c("oral", "esophagus", "stomach"))) |>
+  group_by(group) |>
+  group_split() |>
+  setNames(nm = c("oral", "esophagus", "stomach"))
+  
+  
+# Create plots
+cols_list <- c("oral" = oral_col, "esophagus" = esophagus_col, "stomach" = stomach_col)
+plots <- lapply(names(filtered_data), function(nm) {
+  gg <- filtered_data[[nm]]
+  gg$variable <- factor(gsub(pattern = "factor_", replacement = "factor_n", x = gg$variable), 
+                        levels = gsub(pattern = "factor_", replacement = "factor_n", x = levels(gg$variable)))
+  p <- ggplot(gg, aes(variable, gene, fill = value)) +
+    geom_tile() +
+    scale_fill_gradientn(colours = c(grey_col, cols_list[nm])) +
+    {
+      if (nm != "oral") {
+        theme(panel.background = element_blank(), 
+              axis.text.y = element_blank(), 
+              axis.title.y = element_blank(),
+              axis.ticks.y = element_blank(),
+              axis.title.x = element_blank())
+      } else {
+        theme(panel.background = element_blank(),
+              axis.title.x = element_blank(),
+              axis.title.y = element_blank(),
+              axis.text.y = element_text(size = 12, color = "black"))
+      }
+    } +
+    theme(plot.margin = margin(r = 0, l = 0), 
+          axis.text.x = element_text(size = 12, angle = 45, vjust = 1, hjust = 1, colour = "black"))
+})
+
+p_patched <- wrap_plots(plots, ncol = 3) + plot_layout(guides = "collect")
+
+```
+
+```{r}
+
+# Export plot
+svg(filename = "selected_factors_genes.svg", width = 5, height = 8)
+print(p_patched)
+dev.off()
+
+```
+
+
+Plot distribution for factor 1
+
+```{r}
+
+p1 <- tibble(gene = rownames(se.VAC.d0@reductions$NMF@feature.loadings),
+       weight = se.VAC.d0@reductions$NMF@feature.loadings[, "factor_1"]) |>
+  arrange(-weight) |>
+  slice_head(n = 10) |>
+  mutate(gene = forcats::fct_reorder(factor(gene), weight)) |>
+  ggplot(aes(gene, weight)) +
+  #eom_col(fill = "lightgray", color = "black") +
+  geom_segment(aes(x = gene, xend = gene, y = 0, yend = weight), linetype = "dashed") +
+  geom_point(size = 7, shape = 21, fill = "lightgray") +
+  #ggtext::geom_richtext(aes(x = gene, y = weight/2, label = gene), fill = "white", size = 4.5) +
+  theme_classic() +
+  theme(axis.text.y = element_text(size = 12), 
+  #      #axis.ticks.y = element_blank(), 
+        axis.title.y = element_blank(),
+        axis.text.x = element_text(size = 12),
+        axis.title.x = element_text(size = 14)) +
+  coord_flip()
+
+p2 <- cbind(FetchData(se.VAC.d0, vars = "factor_1"), GetStaffli(se.VAC.d0)@meta.data) |>
+  ggplot(aes(pixel_x, pixel_y, color = factor_1)) +
+  geom_point(size = 0.8) +
+  theme_void() +
+  scale_y_reverse() +
+  scale_colour_gradientn(colours = c(rgb(230, 230, 230, maxColorValue = 255), "black")) +
+  guides(colour = guide_colorbar(title.position = "top")) +
+  theme(legend.position = "top", 
+        plot.title = element_text(hjust = 0.5, size = 14, face = "bold", colour = "black"), 
+        strip.text = element_blank(),
+        legend.margin = margin(),
+        legend.key.width = unit(0.07, "npc"),
+        legend.text = element_text(size = 12, colour = "black"),
+        legend.title = element_text(size = 14, colour = "black")) +
+  labs(title = "", color = "factor_n1") +
+  coord_fixed()
+#p2 <- ggrastr::rasterize(p2, layers = "Points", dpi = 300, dev = "ragg")
+
+p <- p1 + p2 + patchwork::plot_layout(widths = c(1.2, 2), 
+                                 design = c(patchwork::area(t = 1, l = 1, b = 1, r = 1),
+                                            patchwork::area(t = 1, l = 2, b = 1, r = 2)))
+
+svg(filename = "factor_1.svg", width = 7, height = 5)
+print(p)
+dev.off()
+
+```
+
+## All factors
+
+Create spatial plots with extended list of factors
+
+```{r fig.width=8, fig.height=6}
+
+grey_col <- rgb(230, 230, 230, maxColorValue = 255)
+
+# Plot oral factors
+oral_factors <- paste0("factor_", c(20, 31, 35, 42, 45, 48))
+p_oral <- plot_factors(object = se.VAC.d0, fctrs = oral_factors, 
+                       cols = c(grey_col, oral_col), ncol = 12, pt_size = 0.2)
+
+# Plot nasal factors
+nasal_factors <- paste0("factor_", c(13, 16, 27, 28, 30, 32, 33, 36, 54, 55))
+p_nasal <- plot_factors(object = se.VAC.d0, fctrs = nasal_factors, 
+                        cols = c(grey_col, nasal_col), ncol = 12, pt_size = 0.2)
+
+# Plot retropharynx factors
+retrophanrynx_factors <- paste0("factor_", c(6, 24, 37, 53))
+p_retrophanrynx <- plot_factors(object = se.VAC.d0, fctrs = retrophanrynx_factors, 
+                                cols = c(grey_col, retropharynx_col), ncol = 12, pt_size = 0.2)
+
+# Plot esophagus factors
+esophagus_factors <- paste0("factor_", c(2, 7, 10, 15, 17, 29, 40, 43, 51))
+p_esophagus <- plot_factors(object = se.VAC.d0, fctrs = esophagus_factors, 
+                            cols = c(grey_col, esophagus_col), ncol = 12, pt_size = 0.2)
+
+# Plot stomach factors
+stomach_factors <- paste0("factor_", c(1, 3, 4, 5, 9, 18, 22, 26, 34, 39, 41, 46))
+p_stomach <- plot_factors(object = se.VAC.d0, fctrs = stomach_factors, 
+                          cols = c(grey_col, stomach_col), ncol = 12, pt_size = 0.2)
+
+# Patch plots
+p_selected_factors <- wrap_plots(p_oral, p_nasal, p_retrophanrynx, p_esophagus, p_stomach, ncol = 1)
+#p_selected_factors
+
+```
+
+```{r}
+
+# Export plot
+svg(filename = "selected_factors_extended.svg", width = 20, height = 13)
+print(p_selected_factors)
+dev.off()
+
+```
+ 
+ Filter out nasal factors
+ 
+```{r}
+
+# Plot nasal factors
+nasal_factors_excl <- paste0("factor_", c(13, 16, 28, 30, 32, 54, 55))
+p_nasal <- plot_factors(object = se.VAC.d0, fctrs = nasal_factors_excl, 
+                        cols = c(grey_col, nasal_col), ncol = 12, pt_size = 0.3)
+
+# Patch plots
+p_selected_factors <- wrap_plots(p_oral, p_nasal, p_retrophanrynx, p_esophagus, p_stomach, ncol = 1)
+
+# Export plot
+svg(filename = "selected_factors_extended_filtered_nasal.svg", width = 20, height = 13)
+print(p_selected_factors)
+dev.off()
+
+```
+ 
+Create factor loadings plot for all factors
+
+```{r fig.height=}
+
+nmf_loadings <- se.VAC.d0[["NMF"]]@feature.loadings
+
+# Select genes
+sel_data <- nmf_loadings[, c(oral_factors, nasal_factors, retrophanrynx_factors,
+                             esophagus_factors, stomach_factors)] |>
+  as.data.frame() |>
+  rownames_to_column(var = "gene") |>
+  as_tibble() |>
+  pivot_longer(where(is.numeric), names_to = "variable", values_to = "value") |>
+  mutate(variable = factor(variable, levels = c(oral_factors, nasal_factors,
+                                                retrophanrynx_factors, esophagus_factors,
+                                                stomach_factors)))
+
+sel_genes <- sel_data |>
+  group_by(variable) |>
+  arrange(-value) |>
+  slice_head(n = 4)
+
+# Select data
+filtered_data <- sel_data |> 
+  filter(gene %in% sel_genes$gene)  |>
+  mutate(gene = factor(gene, levels = unique(sel_genes$gene) |> rev())) |>
+  group_by(variable) |>
+  arrange(variable, -value) |>
+  mutate(value = value/max(value)) |>
+  mutate(group = case_when(
+    variable %in% oral_factors ~ "oral",
+    variable %in% nasal_factors ~ "nasal",
+    variable %in% retrophanrynx_factors ~ "retrophanrynx",
+    variable %in% esophagus_factors ~ "esophagus",
+    variable %in% stomach_factors ~ "stomach",
+  )) |>
+  mutate(group = factor(group, levels = c("oral", "nasal", "retrophanrynx", 
+                                          "esophagus", "stomach"))) |>
+  group_by(group) |>
+  group_split() |>
+  setNames(nm = c("oral", "nasal", "retrophanrynx", "esophagus", "stomach"))
+  
+  
+# Create plots
+cols_list <- c("oral" = oral_col, "nasal" = nasal_col, "retrophanrynx" = retropharynx_col,
+               "esophagus" = esophagus_col, "stomach" = stomach_col)
+plots <- lapply(names(filtered_data), function(nm) {
+  gg <- filtered_data[[nm]]
+  gg$variable <- factor(gsub(pattern = "factor_", replacement = "factor_n", x = gg$variable), 
+                        levels = gsub(pattern = "factor_", replacement = "factor_n", x = levels(gg$variable)))
+  p <- ggplot(gg, aes(variable, gene, fill = value)) +
+    geom_tile() +
+    scale_fill_gradientn(colours = c(grey_col, cols_list[nm])) +
+    {
+      if (nm != "oral") {
+        theme(panel.background = element_blank(), 
+              axis.text.y = element_blank(), 
+              axis.title.y = element_blank(),
+              axis.ticks.y = element_blank(),
+              axis.title.x = element_blank())
+      } else {
+        theme(panel.background = element_blank(),
+              axis.title.x = element_blank(),
+              axis.title.y = element_blank(),
+              axis.text.y = element_text(size = 10, color = "black"))
+      }
+    } +
+    theme(plot.margin = margin(r = 0, l = 0), 
+          axis.text.x = element_text(size = 12, angle = 45, vjust = 1, hjust = 1, colour = "black"))
+})
+
+p_patched <- wrap_plots(plots, ncol = 5, 
+                        widths = c(length(oral_factors), length(nasal_factors),
+                                   length(retrophanrynx_factors), length(esophagus_factors), 
+                                   length(stomach_factors))) + 
+  plot_layout(guides = "collect")
+
+```
+
+```{r}
+
+# Export plot
+svg(filename = "all_factors_genes.svg", width = 10, height = 16)
+print(p_patched)
+dev.off()
+
+```
+
+Create factor loadings plot for all factors
+
+```{r fig.height=}
+
+# Select genes
+sel_data <- nmf_loadings[, c(oral_factors, nasal_factors_excl, 
+                             retrophanrynx_factors,
+                             esophagus_factors, stomach_factors)] |>
+  as.data.frame() |>
+  rownames_to_column(var = "gene") |>
+  as_tibble() |>
+  pivot_longer(where(is.numeric), names_to = "variable", values_to = "value") |>
+  mutate(variable = factor(variable, levels = c(oral_factors, nasal_factors_excl,
+                                                retrophanrynx_factors, esophagus_factors,
+                                                stomach_factors)))
+
+sel_genes <- sel_data |>
+  group_by(variable) |>
+  arrange(-value) |>
+  slice_head(n = 4)
+
+# Select data
+filtered_data <- sel_data |> 
+  filter(gene %in% sel_genes$gene)  |>
+  mutate(gene = factor(gene, levels = unique(sel_genes$gene) |> rev())) |>
+  group_by(variable) |>
+  arrange(variable, -value) |>
+  mutate(value = value/max(value)) |>
+  mutate(group = case_when(
+    variable %in% oral_factors ~ "oral",
+    variable %in% nasal_factors ~ "nasal",
+    variable %in% retrophanrynx_factors ~ "retrophanrynx",
+    variable %in% esophagus_factors ~ "esophagus",
+    variable %in% stomach_factors ~ "stomach",
+  )) |>
+  mutate(group = factor(group, levels = c("oral", "nasal", "retrophanrynx", 
+                                          "esophagus", "stomach"))) |>
+  group_by(group) |>
+  group_split() |>
+  setNames(nm = c("oral", "nasal", "retrophanrynx", "esophagus", "stomach"))
+
+plots <- lapply(names(filtered_data), function(nm) {
+  gg <- filtered_data[[nm]]
+  gg$variable <- factor(gsub(pattern = "factor_", replacement = "factor_n", x = gg$variable), 
+                        levels = gsub(pattern = "factor_", replacement = "factor_n", 
+                                      x = levels(gg$variable)))
+  p <- ggplot(gg, aes(variable, gene, fill = value)) +
+    geom_tile() +
+    scale_fill_gradientn(colours = c(grey_col, cols_list[nm])) +
+    {
+      if (nm != "oral") {
+        theme(panel.background = element_blank(), 
+              axis.text.y = element_blank(), 
+              axis.title.y = element_blank(),
+              axis.ticks.y = element_blank(),
+              axis.title.x = element_blank())
+      } else {
+        theme(panel.background = element_blank(),
+              axis.title.x = element_blank(),
+              axis.title.y = element_blank(),
+              axis.text.y = element_text(size = 10, color = "black"))
+      }
+    } +
+    theme(plot.margin = margin(r = 0, l = 0), 
+          axis.text.x = element_text(size = 12, angle = 45, vjust = 1, hjust = 1, colour = "black"))
+})
+
+p_patched <- wrap_plots(plots, ncol = 5, 
+                        widths = c(length(oral_factors), length(nasal_factors_excl),
+                                   length(retrophanrynx_factors), length(esophagus_factors), 
+                                   length(stomach_factors))) + 
+  plot_layout(guides = "collect")
+
+```
+
+```{r}
+
+# Export plot
+svg(filename = "all_factors_genes_nasal_excluded.svg", width = 10, height = 16)
+print(p_patched)
+dev.off()
+
+```

@@ -1,0 +1,196 @@
+---
+title: "Upper digestive tract VAC d0"
+author: "Ludvig Larsson"
+date: "2/11/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load libraries
+
+```{r}
+library(STutility)
+library(dplyr)
+library(magrittr)
+```
+
+Collect spaceranger output files
+
+```{r}
+
+samples <- list.files(path = "~/Oral/data", pattern = "filtered_feature_bc_matrix.h5", full.names = TRUE, recursive = TRUE)
+imgs <- list.files(path = "~/Oral/data", pattern = "tissue_hires_image.png", full.names = TRUE, recursive = TRUE)
+spotfiles <- list.files(path = "~/Oral/data", pattern = "tissue_positions_list_curated.csv", full.names = TRUE, recursive = TRUE)
+json <- list.files(path = "~/Oral/data", pattern = "scalefactors_json.json", full.names = TRUE, recursive = TRUE)
+
+infoTable <- data.frame(samples, imgs, spotfiles, json, section_id = paste0("section_", 1:4),
+                        type = c("VAC", "VAD", "VAC", "VAD"),
+                        day = c( "d0", "d0", "d14", "d14"))
+infoTable
+
+```
+
+Create Seurat object for VAC d0 section
+
+```{r}
+
+se.VAC.d0 <- InputFromTable(infoTable[1, ])
+
+```
+
+## QC
+***
+
+```{r}
+VlnPlot(se.VAC.d0, features = "nFeature_RNA", group.by = "section_id")
+```
+
+```{r fig.width=5, fig.height=5}
+ST.FeaturePlot(se.VAC.d0, features = "nFeature_RNA", pt.size = 2)
+```
+
+## Analysis
+***
+
+```{r}
+
+se.VAC.d0 <- se.VAC.d0 %>%
+  SCTransform() %>%
+  RunPCA() %>%
+  RunNMF(nfactors = 55) %>%
+  FindNeighbors(reduction = "pca", dims = 1:50) %>%
+  FindClusters() %>%
+  RunUMAP(reduction = "pca", dims = 1:50)
+  
+```
+
+
+```{r fig.width=6, fig.height=7}
+
+DimPlot(se.VAC.d0)
+
+```
+
+
+Visualization tests
+
+```{r}
+
+p1 <- cbind(FetchData(se.VAC.d0, vars = "factor_1"), GetStaffli(se.VAC.d0)@meta.data) |>
+  ggplot(aes(pixel_x, pixel_y, color = factor_1)) +
+  geom_point() +
+  theme_void() +
+  scale_y_reverse() +
+  scale_colour_gradientn(colours = viridis::magma(n = 11, direction = -1)) +
+  guides(colour = guide_colorbar(title.position = "top")) +
+  theme(legend.position = "top", 
+        plot.title = element_text(hjust = 0.5, size = 18, face = "bold", colour = "black"), 
+        strip.text = element_blank(),
+        legend.margin = margin(),
+        legend.key.width = unit(0.1,"npc"),
+        legend.text = element_text(size = 16, colour = "black"),
+        legend.title = element_text(size = 18, colour = "black")) +
+  labs(title = "", color = "factor_n1")
+#p1 <- ggrastr::rasterize(p1, layers = "Points", dpi = 300, dev = "ragg")
+
+p2 <- tibble(gene = rownames(se.VAC.d0@reductions$NMF@feature.loadings),
+       weight = se.VAC.d0@reductions$NMF@feature.loadings[, "factor_1"]) |>
+  arrange(-weight) |>
+  slice_head(n = 10) |>
+  mutate(gene = forcats::fct_reorder(factor(gene), weight)) |>
+  ggplot(aes(gene, weight)) +
+  geom_segment(aes(x = gene, xend = gene, y = 0, yend = weight)) +
+  geom_point(size = 7, shape = 21, fill = "lightgray") +
+  ggtext::geom_richtext(aes(x = gene, y = weight/2, label = gene), fill = "white", size = 4.5) +
+  theme_classic() +
+  theme(axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank(), 
+        axis.title.y = element_blank(),
+        axis.text.x = element_text(size = 16),
+        axis.title.x = element_text(size = 18)) +
+  coord_flip()
+
+p <- p1 + p2 + patchwork::plot_layout(widths = c(2, 1.2), 
+                                 design = c(patchwork::area(t = 1, l = 1, b = 1, r = 1),
+                                            patchwork::area(t = 1, l = 2, b = 1, r = 2)))
+
+svg(filename = "../plots/figure_plots/factor_1.svg", width = 6.5, height = 6)
+print(p)
+dev.off()
+
+```
+
+
+
+```{r export_factors}
+
+# se.VAC.d0 <- LoadImages(se.VAC.d0, time.resolve = FALSE, xdim = 1979)
+
+se.VAC.d0$type_day <- paste0(se.VAC.d0$type, " : ", se.VAC.d0$day)
+for (i in 1:55) {
+  p1 <- DimOverlay(se.VAC.d0, reduction = "NMF", center.zero = FALSE, sampleids = 1, pt.size = 1.7, label.by = "type_day",
+                   show.sb = FALSE, palette = "Spectral", dims = i, value.scale = "all") &
+    theme(plot.title = element_blank(), legend.position = "top", 
+          plot.subtitle = element_text(size = 16, colour = "black"),
+          legend.text = element_text(size = 12, color = "black"),
+          legend.title = element_text(size = 14, colour = "black")) &
+    labs(fill = "factor activity") &
+    coord_fixed()
+  #p1 <- ggrastr::rasterise(p1, layers = "Point", dev = "ragg", dpi = 300)
+  p2 <- FactorGeneLoadingPlot(se.VAC.d0, factor = i, topn = 40) + labs(y = "gene weight") + 
+    theme(axis.text.x = element_text(size = 10, colour = "black"), 
+          axis.title = element_text(size = 12, colour = "black"))
+  p <- (p1 | p2) + patchwork::plot_layout(ncol = 2, widths = c(2, 1))
+  svg(filename = paste0("../plots/factors_n55_VAC_d0/factor_", i, ".svg"), width = 10, height = 8)
+  print(p)
+  dev.off()
+}
+
+ for (i in 1:55) {
+   p1 <- DimOverlay(se.VAC.d0, reduction = "NMF", center.zero = FALSE, sampleids = 1, pt.size = 2, label.by = "type_day",
+                    show.sb = FALSE, palette = "Spectral", dims = i, value.scale = "all", add.alpha = TRUE) &
+     theme(plot.title = element_blank(), legend.position = "top", 
+          plot.subtitle = element_text(size = 16, colour = "black"),
+          legend.text = element_text(size = 12, color = "black"),
+          legend.title = element_text(size = 14, colour = "black"))  &
+     labs(fill = "factor activity") &
+     coord_fixed()
+   # p1 <- ggrastr::rasterise(p1, layers = "Point", dev = "ragg", dpi = 300)
+   p2 <- FactorGeneLoadingPlot(se.VAC.d0, factor = i, topn = 40) + labs(y = "gene weight") + 
+      theme(axis.text.x = element_text(size = 10, colour = "black"), 
+            axis.title = element_text(size = 12, colour = "black"))
+   p <- (p1 | p2) + patchwork::plot_layout(ncol = 2, widths = c(2, 1))
+   svg(filename = paste0("../plots/factors_n55_VAC_d0_alpha_scaled/factor_", i, ".svg"), width = 10, height = 8)
+   print(p)
+   dev.off()
+ }
+ 
+ for (i in 1:55) {
+   p1 <- ST.DimPlot(se.VAC.d0, reduction = "NMF", center.zero = FALSE, pt.size = 2, label.by = "type_day",
+                    show.sb = FALSE, palette = "Spectral", dims = i) &
+     theme(plot.title = element_blank(), legend.position = "top", 
+          plot.subtitle = element_text(size = 16, colour = "black"),
+          legend.text = element_text(size = 12, color = "black"),
+          legend.title = element_text(size = 14, colour = "black")) &
+     labs(fill = "factor activity")
+   #p1 <- ggrastr::rasterise(p1, layers = "Point", dev = "ragg", dpi = 300)
+   p2 <- FactorGeneLoadingPlot(se.VAC.d0, factor = i, topn = 40) + labs(y = "gene weight") +
+     theme(axis.text.x = element_text(size = 10, colour = "black"), 
+          axis.title = element_text(size = 12, colour = "black"))
+   p <- (p1 | p2) + patchwork::plot_layout(ncol = 2, widths = c(2, 1))
+   svg(filename = paste0("../plots/factors_n55_VAC_d0_no_HE/factor_", i, ".svg"), width = 12, height = 8)
+   print(p)
+   dev.off()
+ }
+
+```
+
+```{r}
+
+saveRDS(se.VAC.d0, file = "../R_objects/se.VAC.d0")
+
+```
+
