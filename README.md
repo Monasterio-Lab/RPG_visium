@@ -5,7 +5,7 @@ This repo contains the code required to reproduce the spatial transcriptomics da
 
 ## Repository contents
 
-- `NNMF` contains Rmd files to reproduce factor analysis of sample A1
+- `NNMF` contains Rmd files to reproduce factor analysis of sample A1 as well as code to create source csv files for each of the figure panels from this analysis
 - `deconvolution` contains scripts to reproduce deconvolution of sample A1 and D1 and related analyses
 
 Data will be available on zenodo and GEO.
