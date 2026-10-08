@@ -1,2 +1,11 @@
 # visium-ores-rolls
-Analysis of Visium v1 data of ORES rolls for Monasterio et al manuscript
+
+## Intro
+This repo contains the code required to reproduce the spatial transcriptomics data results of the manuscript 'Spatial transcriptomics of the upper aerodigestive tract reveals previously unrecognised retropharyngeal salivary gland'.
+
+## Repository contents
+
+- `NNMF` contains Rmd files to reproduce factor analysis of sample A1
+- `deconvolution` contains scripts to reproduce deconvolution of sample A1 and D1 and related analyses
+
+Data will be available on zenodo and GEO.
