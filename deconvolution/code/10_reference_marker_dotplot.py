@@ -2,6 +2,9 @@
 """Marker genes per cell type for the SMG+SLG+Parotid combined reference:
 Wilcoxon rank_genes_groups (one-vs-rest), top markers per type -> dotplot.
 Documents the genes that define each of the 27 reference cell types."""
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
 import os, warnings; warnings.filterwarnings("ignore")
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 import numpy as np, pandas as pd, scanpy as sc
@@ -9,8 +12,8 @@ import matplotlib; matplotlib.use("Agg")
 matplotlib.rcParams.update({"svg.fonttype": "none", "pdf.fonttype": 42, "font.family": "DejaVu Sans"})
 import matplotlib.pyplot as plt
 
-REF = "data/reference/combined_parotid_ref.h5ad"
-OUT = "results/figures_parotid"; os.makedirs(OUT, exist_ok=True)
+REF = f"{DATA}/reference/scRNA_reference_SMG_SLG_parotid.h5ad"
+OUT = f"{RESULTS}/figures_parotid"; os.makedirs(OUT, exist_ok=True)
 NTOP = 3
 
 ad = sc.read_h5ad(REF)

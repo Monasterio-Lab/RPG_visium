@@ -1,8 +1,11 @@
 #!/usr/bin/env python
-"""UMAP of the new SMG+SLG+Parotid combined reference (combined_parotid_ref),
+"""UMAP of the new SMG+SLG+Parotid combined reference (scRNA_reference_SMG_SLG_parotid),
 integrated WITH and WITHOUT Harmony, coloured by cell-type annotation and by
 dataset (3 studies). Dataset legend uses the citation format.
 """
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
 import os, warnings; warnings.filterwarnings("ignore")
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 import numpy as np, scanpy as sc, harmonypy
@@ -12,8 +15,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
 from matplotlib.lines import Line2D
 
-REF = "data/reference/combined_parotid_ref.h5ad"
-OUT = "results/figures_parotid"; os.makedirs(OUT, exist_ok=True)
+REF = f"{DATA}/reference/scRNA_reference_SMG_SLG_parotid.h5ad"
+OUT = f"{RESULTS}/figures_parotid"; os.makedirs(OUT, exist_ok=True)
 
 # study -> (colour, citation label)
 STUDY = {

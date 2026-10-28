@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 """D1 (SMG+SLG) Visium — abundance grid + lineage scatterpie from the
-parotid-augmented deconvolution (results/D1_combined_parotid). Same aesthetics
-as the RPG/A1 figures. SMG/SLG regions labelled from D1_spot_glands.csv."""
+parotid-augmented deconvolution (data/cell2location/V13U19-349_D1). Same aesthetics
+as the RPG/A1 figures. SMG/SLG regions labelled from V13U19-349_D1_gland_assignment.csv."""
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
 import os, re, json, warnings; warnings.filterwarnings("ignore")
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 import numpy as np, pandas as pd, scanpy as sc
@@ -16,9 +19,9 @@ from matplotlib.patches import Wedge, Patch, Circle
 from matplotlib.collections import PatchCollection
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 
-RES = "results/D1_combined_parotid"
-SPDIR = "SMG:SLG_Outs/D1/outs/spatial"
-OUT = "results/figures_parotid"; os.makedirs(OUT, exist_ok=True)
+RES = f"{DATA}/cell2location/V13U19-349_D1"
+SPDIR = f"{DATA}/VISIUM_outs/V13U19-349_D1/spatial"
+OUT = f"{RESULTS}/figures_parotid"; os.makedirs(OUT, exist_ok=True)
 SPOT_UM = 55.0
 
 LINEAGE = {
@@ -35,9 +38,9 @@ LINEAGE = rename_lineage(LINEAGE)
 CATS = ["Acinar-Serous", "Acinar-Mucous", "Ductal", "Stromal/Mesench", "Immune", "Others"]
 COL = dict(zip(CATS, ["#E15759", "#4E79A7", "#59A14F", "#B07AA1", "#F28E2B", "#CFCFCF"]))
 
-prop = pd.read_csv(f"{RES}/D1_cell_type_proportions.csv", index_col=0)
-abund = pd.read_csv(f"{RES}/D1_cell_abundances_q05.csv", index_col=0)
-ad = sc.read_h5ad(f"{RES}/D1_cell2location.h5ad")
+prop = pd.read_csv(f"{RES}/V13U19-349_D1_cell_type_proportions.csv", index_col=0)
+abund = pd.read_csv(f"{RES}/V13U19-349_D1_cell_abundances_q05.csv", index_col=0)
+ad = sc.read_h5ad(f"{RES}/V13U19-349_D1_cell2location.h5ad")
 assigned = sum(LINEAGE.values(), [])
 lin = pd.DataFrame({g: prop[[c for c in m if c in prop.columns]].sum(axis=1) for g, m in LINEAGE.items()},
                    index=prop.index)
@@ -55,7 +58,7 @@ bcs = ad.obs_names
 radius = 0.5 * np.median(cKDTree(XY).query(XY, k=2)[0][:, 1])
 
 # gland labels
-gl = pd.read_csv("results/D1_cluster/D1_spot_glands.csv").set_index("barcode")["gland"].reindex(bcs)
+gl = pd.read_csv(f"{DATA}/annotations/V13U19-349_D1_gland_assignment.csv").set_index("barcode")["gland"].reindex(bcs)
 x0, x1 = XY[:, 0].min() - 8 * radius, XY[:, 0].max() + 8 * radius
 y0, y1 = XY[:, 1].min() - 8 * radius, XY[:, 1].max() + 8 * radius
 cx0, cx1 = max(int(x0), 0), min(int(x1), W_hi); cy0, cy1 = max(int(y0), 0), min(int(y1), H_hi)

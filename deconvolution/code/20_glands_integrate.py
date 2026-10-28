@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Integrate the three salivary regions for gland-vs-gland comparison:
-  RPG  - suspected salivary ROI in section A1 (roi_myregion.csv)
-  SMG  - submandibular main body of section D1 (D1_spot_glands.csv)
+  RPG  - suspected salivary ROI in section A1 (V10S15-395_A1_RPG_ROI_loupe.csv)
+  SMG  - submandibular main body of section D1 (V13U19-349_D1_gland_assignment.csv)
   SLG  - sublingual top lobe of section D1
 Produces: combined object, PCA + UMAP (uncorrected and Harmony, coloured by
 gland and by section), pseudobulk gland-correlation heatmap, and DEGs
@@ -11,6 +11,9 @@ CAVEAT baked into the outputs: RPG is the only region from section A1, so
 RPG-vs-(SMG/SLG) contrasts are confounded with section/batch; SMG-vs-SLG is
 within-section and clean. Harmony-corrected embeddings are provided alongside the
 uncorrected ones for transparency."""
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
 import os, re, sys, warnings; warnings.filterwarnings("ignore")
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 os.environ.setdefault("OMP_NUM_THREADS", "4")
@@ -22,7 +25,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from visium_io import load_visium, load_visium_a1
 
-RES = "results/glands_compare"; FIG = "results/figures_glands"
+RES = f"{RESULTS}/glands_compare"; FIG = f"{RESULTS}/figures_glands"
 os.makedirs(RES, exist_ok=True); os.makedirs(FIG, exist_ok=True)
 PAL = {"RPG": "#59A14F", "SMG": "#4E79A7", "SLG": "#E15759"}
 SECPAL = {"A1": "#9C755F", "D1": "#EDC948"}
@@ -30,7 +33,7 @@ BC_RE = re.compile(r"^[ACGT]{8,}-?\d*$")
 
 # ---- RPG spots from A1 ----
 a1 = load_visium_a1()
-roi = pd.read_csv("roi_myregion.csv")
+roi = pd.read_csv(f"{DATA}/annotations/V10S15-395_A1_RPG_ROI_loupe.csv")
 bcc = next(c for c in roi.columns if roi[c].astype(str).str.match(BC_RE).mean() > 0.8)
 ROI_BC = set(b if "-" in str(b) else f"{b}-1" for b in roi[bcc].astype(str).str.strip())
 rpg = a1[[b in ROI_BC for b in a1.obs_names]].copy()
@@ -38,8 +41,8 @@ rpg.obs["gland"] = "RPG"; rpg.obs["section"] = "A1"
 print(f"RPG spots: {rpg.n_obs}", flush=True)
 
 # ---- SMG / SLG spots from D1 ----
-d1 = load_visium("SMG:SLG_Outs/D1/outs", "D1", img_key="hires")
-gl = pd.read_csv("results/D1_cluster/D1_spot_glands.csv", index_col="barcode")
+d1 = load_visium(f"{DATA}/VISIUM_outs/V13U19-349_D1", "D1", img_key="hires")
+gl = pd.read_csv(f"{DATA}/annotations/V13U19-349_D1_gland_assignment.csv", index_col="barcode")
 d1 = d1[[b in gl.index for b in d1.obs_names]].copy()
 d1.obs["gland"] = gl.loc[d1.obs_names, "gland"].values
 d1.obs["section"] = "D1"

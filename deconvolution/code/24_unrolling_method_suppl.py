@@ -3,7 +3,10 @@ Left: the A1 H&E with Visium spots at their TRUE size, coloured by the unrolled
 coordinate, with the fitted medial axis (dashed) and each spot's perpendicular
 projection onto it (thin lines). Right: the unrolled track (per-spot position strip
 + per-gene fraction-of-peak heatmap). """
-import os, json, warnings, sys; warnings.filterwarnings("ignore"); sys.path.insert(0, "analysis")
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
+import os, json, warnings, sys; warnings.filterwarnings("ignore")
 import numpy as np, pandas as pd, scanpy as sc
 from sklearn.cluster import DBSCAN
 from scipy.interpolate import splprep, splev
@@ -20,7 +23,7 @@ from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 from visium_io import load_visium_a1
 
-OUT = "results/figures_parotid"; SPDIR = "VISIUM_outs/V10S15-395_A1/spatial"
+OUT = f"{RESULTS}/figures_parotid"; SPDIR = f"{DATA}/VISIUM_outs/V10S15-395_A1/spatial"
 GREEN, ORANGE, BLUE = "#2E7D32", "#E07B00", "#1F5FBF"
 CORE = ["Aqp5", "Gp2", "Muc5b", "Cldn10", "Kcnn4", "Sbpl"]   # Sbpl: flat (1.6x), expressed throughout
 PROX = ["Muc19", "Dcpp1", "Dcpp2", "Smgc", "Bpifb2", "Bpifb6", "Wfdc12", "Cgref1"]
@@ -31,7 +34,7 @@ DIST = ["Lyz2", "Bpifb1", "Lipf"]
 # comparison (Suppl. Fig. 10A / Fig. 2J), so the regionalization is coherent with the
 # cleaning; DBSCAN then drops the few spatially isolated nasal spots that remain.
 a1 = load_visium_a1(); sc.pp.normalize_total(a1, target_sum=1e4); sc.pp.log1p(a1)
-gl = sc.read_h5ad("results/glands_glandular/glands_glandular.h5ad")
+gl = sc.read_h5ad(f"{DATA}/integration/glandular_spots_RPG_SLG_SMG.h5ad")
 kept100 = set(b[:-3] if b.endswith("-A1") else b for b in gl.obs_names[gl.obs["gland"] == "RPG"])
 inroi = np.array([b in kept100 for b in a1.obs_names])
 rbc0 = a1.obs_names[inroi]; rxy0 = a1.obsm["spatial"].astype(float)[inroi]
@@ -47,7 +50,7 @@ for i, p in enumerate(rxy0):
         if d < dm: dm, cb = d, c
     assign[i] = cb if dm <= 1.7 * nn else -9
 keep = assign != -9; rbc = rbc0[keep]; rxy = rxy0[keep]; regid = assign[keep]
-prop = pd.read_csv("results/A1_combined_parotid/A1_cell_type_proportions.csv", index_col=0)
+prop = pd.read_csv(f"{DATA}/cell2location/V10S15-395_A1/V10S15-395_A1_cell_type_proportions.csv", index_col=0)
 imm = [c for c in prop.columns if "immune" in c.lower() or "macrophage" in c.lower() or c.startswith("NK")]
 sz = pd.Series(regid).value_counts(); big = sz.idxmax(); oth = [c for c in cores if c != big]
 immv = {c: prop.loc[rbc[regid == c], imm].sum(1).mean() for c in oth}

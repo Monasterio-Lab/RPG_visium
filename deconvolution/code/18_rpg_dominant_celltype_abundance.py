@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 """(1) Dominant cell type per RPG spot on the H&E, and (2) the per-cell-type
 abundance grid for the RPG ROI — both from the parotid-augmented deconvolution."""
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
 import os, re, json, warnings; warnings.filterwarnings("ignore")
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 import numpy as np, pandas as pd, scanpy as sc
@@ -13,17 +16,17 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Circle
 from matplotlib.collections import PatchCollection
 
-RES = "results/A1_combined_parotid"; SPDIR = "VISIUM_outs/V10S15-395_A1/spatial"
-OUT = "results/figures_parotid"; os.makedirs(OUT, exist_ok=True)
+RES = f"{DATA}/cell2location/V10S15-395_A1"; SPDIR = f"{DATA}/VISIUM_outs/V10S15-395_A1/spatial"
+OUT = f"{RESULTS}/figures_parotid"; os.makedirs(OUT, exist_ok=True)
 BC_RE = re.compile(r"^[ACGT]{8,}-\d+$")
 
-prop = pd.read_csv(f"{RES}/A1_cell_type_proportions.csv", index_col=0)
-abund = pd.read_csv(f"{RES}/A1_cell_abundances_q05.csv", index_col=0)
-roi = pd.read_csv("roi_myregion.csv")
+prop = pd.read_csv(f"{RES}/V10S15-395_A1_cell_type_proportions.csv", index_col=0)
+abund = pd.read_csv(f"{RES}/V10S15-395_A1_cell_abundances_q05.csv", index_col=0)
+roi = pd.read_csv(f"{DATA}/annotations/V10S15-395_A1_RPG_ROI_loupe.csv")
 bcc = next(c for c in roi.columns if roi[c].astype(str).str.match(BC_RE).mean() > 0.8)
 ROI_BC = set(b if "-" in str(b) else f"{b}-1" for b in roi[bcc].astype(str).str.strip())
 
-ad = sc.read_h5ad(f"{RES}/A1_cell2location.h5ad")
+ad = sc.read_h5ad(f"{RES}/V10S15-395_A1_cell2location.h5ad")
 sf = json.load(open(f"{SPDIR}/scalefactors_json.json"))
 HE = np.asarray(Image.open(f"{SPDIR}/tissue_hires_image.png").convert("RGB")); H_hi, W_hi = HE.shape[:2]
 lo = Image.open(f"{SPDIR}/tissue_lowres_image.png")

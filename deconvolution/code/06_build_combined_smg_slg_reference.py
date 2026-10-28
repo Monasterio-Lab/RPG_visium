@@ -4,14 +4,17 @@ GSE216476 cells (8 SMG/SLG-mix types), batch key = study. Raw counts, common
 genes. GSE216476 types get a ' (mix)' suffix to mark the cross-gland source
 (except the SLG-specific mucous acinar, kept as-is)."""
 import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
+import os
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 import warnings; warnings.filterwarnings("ignore")
 import numpy as np, pandas as pd, scanpy as sc, anndata as ad
 import scipy.sparse as sp
 
-SMG = "data/reference/adult_ref.h5ad"
-G2 = "data/reference/GSE216476/slg_annotated_full.h5ad"
-OUT = "data/reference/combined_full_ref.h5ad"
+SMG = f"{DATA}/reference/adult_ref.h5ad"
+G2 = f"{DATA}/reference/GSE216476/slg_annotated_full.h5ad"
+OUT = f"{DATA}/reference/combined_full_ref.h5ad"
 
 smg = sc.read_h5ad(SMG)
 smg.obs["study"] = "SMG_iScience"

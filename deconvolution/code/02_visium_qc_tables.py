@@ -4,20 +4,23 @@ Space Ranger summary metrics are parsed from A1's web_summary.html (Space Ranger
 (mean genes/UMIs, mitochondrial fraction, UMI CV) is computed from the filtered
 matrices. Sheets: 'A1 (ORES)', 'D1 (SMG-SLG)', 'A1 vs D1'. Formatted for copy-paste
 into Affinity. Run: ./.venv/bin/python analysis/02_visium_qc_tables.py"""
-import re, sys, warnings; warnings.filterwarnings("ignore"); sys.path.insert(0, "analysis")
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
+import re, sys, warnings; warnings.filterwarnings("ignore")
 import numpy as np, pandas as pd, scanpy as sc
 from visium_io import load_visium_a1, load_visium
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-html = open("VISIUM_outs/V10S15-395_A1/web_summary.html", encoding="utf-8", errors="ignore").read()
+html = open(f"{DATA}/VISIUM_outs/V10S15-395_A1/web_summary.html", encoding="utf-8", errors="ignore").read()
 a1raw = {}
 for name, val in re.findall(r'\["([^"]+)", "([\d.,%]+)"\]', html): a1raw.setdefault(name, val)
 for val, name in re.findall(r'"metric": "([\d.,%]+)", "name": "([^"]+)"', html): a1raw.setdefault(name, val)
 def num(s):
     s = str(s).strip()
     return float(s[:-1].replace(",", "")) / 100.0 if s.endswith("%") else float(s.replace(",", ""))
-d1csv = pd.read_csv("SMG:SLG_Outs/D1/outs/metrics_summary.csv"); d1raw = {c: d1csv.iloc[0][c] for c in d1csv.columns}
+d1csv = pd.read_csv(f"{DATA}/VISIUM_outs/V13U19-349_D1/metrics_summary.csv"); d1raw = {c: d1csv.iloc[0][c] for c in d1csv.columns}
 
 SPEC = [("Number of Spots Under Tissue","int"),("Number of Reads","int"),("Mean Reads per Spot","int"),
  ("Mean Reads Under Tissue per Spot","int"),("Fraction of Spots Under Tissue","pct"),("Median Genes per Spot","int"),
@@ -36,7 +39,7 @@ def perspot(ad):
     mt = ad.var_names.str.match(r"^mt-"); mito = np.asarray(ad[:, mt].X.sum(1)).ravel() / np.maximum(umi, 1)
     return dict(n=ad.n_obs, mean_genes=genes.mean(), mean_umi=umi.mean(),
                 med_mito=np.median(mito), mean_mito=mito.mean(), umi_cv=umi.std()/umi.mean())
-qa, qd = perspot(load_visium_a1()), perspot(load_visium("SMG:SLG_Outs/D1/outs", "D1", img_key="hires"))
+qa, qd = perspot(load_visium_a1()), perspot(load_visium(f"{DATA}/VISIUM_outs/V13U19-349_D1", "D1", img_key="hires"))
 
 wb = Workbook(); F = "Arial"
 hf = PatternFill("solid", fgColor="1F4E79"); hft = Font(name=F, bold=True, size=12, color="FFFFFF")
@@ -103,4 +106,4 @@ for lab, key, numfmt in PS: put3(lab, qa[key], qd[key], numfmt)
 ws.column_dimensions["A"].width = 44; ws.column_dimensions["B"].width = 15; ws.column_dimensions["C"].width = 15
 ws.sheet_view.showGridLines = False
 
-out = "results/figures_parotid/Visium_QC_A1_D1.xlsx"; wb.save(out); print("wrote", out)
+out = f"{RESULTS}/figures_parotid/Visium_QC_A1_D1.xlsx"; wb.save(out); print("wrote", out)

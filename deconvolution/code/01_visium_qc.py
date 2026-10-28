@@ -1,19 +1,21 @@
 """Per-DATASET Visium QC figures (they appear in different parts of the paper):
 one self-contained 2x2 panel each for A1 (ORES) and D1 (SMG/SLG) — spatial UMI
 homogeneity map + genes/UMIs/mito per-spot distributions."""
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
 import os, sys, warnings; warnings.filterwarnings("ignore")
-sys.path.insert(0, "analysis")
 import numpy as np, scanpy as sc
 import matplotlib; matplotlib.use("Agg")
 matplotlib.rcParams.update({"svg.fonttype": "none", "pdf.fonttype": 42, "font.family": "DejaVu Sans"})
 import matplotlib.pyplot as plt
 from visium_io import load_visium_a1, load_visium
 
-OUT = "results/figures_parotid"; os.makedirs(OUT, exist_ok=True)
+OUT = f"{RESULTS}/figures_parotid"; os.makedirs(OUT, exist_ok=True)
 COL = {"A1 (ORES)": "#4C72B0", "D1 (SMG/SLG)": "#C44E52"}
 
 def load(name, kind):
-    a = load_visium_a1() if kind == "a1" else load_visium("SMG:SLG_Outs/D1/outs", "D1", img_key="hires")
+    a = load_visium_a1() if kind == "a1" else load_visium(f"{DATA}/VISIUM_outs/V13U19-349_D1", "D1", img_key="hires")
     a.var_names_make_unique()
     a.obs["umi"] = np.asarray(a.X.sum(1)).ravel()
     a.obs["genes"] = np.asarray((a.X > 0).sum(1)).ravel()

@@ -5,6 +5,9 @@ regions (KMeans), and zooms 4 representative spots into enlarged pies:
 upper-centre, upper-peripheral, centre region, distal (immune-rich) region.
 Lineage grouping per the requested legend (Acinar-Serous/Mucous, Ductal,
 Stromal/Mesench, Immune, Others)."""
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
 import os, re, json, warnings; warnings.filterwarnings("ignore")
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 import numpy as np, pandas as pd, scanpy as sc
@@ -18,9 +21,9 @@ import matplotlib.font_manager as fm
 from matplotlib.patches import Wedge, Patch, ConnectionPatch
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 
-RES = "results/A1_combined_parotid"
-SPDIR = "VISIUM_outs/V10S15-395_A1/spatial"
-OUT = "results/figures_parotid"; os.makedirs(OUT, exist_ok=True)
+RES = f"{DATA}/cell2location/V10S15-395_A1"
+SPDIR = f"{DATA}/VISIUM_outs/V10S15-395_A1/spatial"
+OUT = f"{RESULTS}/figures_parotid"; os.makedirs(OUT, exist_ok=True)
 SPOT_UM = 55.0; BC_RE = re.compile(r"^[ACGT]{8,}-\d+$")
 
 # 28 reference cell types -> 6 lineages
@@ -39,18 +42,18 @@ LINEAGE = rename_lineage(LINEAGE)
 CATS = ["Acinar-Serous", "Acinar-Mucous", "Ductal", "Stromal/Mesench", "Immune", "Others"]
 COL = dict(zip(CATS, ["#E15759", "#4E79A7", "#59A14F", "#B07AA1", "#F28E2B", "#CFCFCF"]))
 
-prop = pd.read_csv(f"{RES}/A1_cell_type_proportions.csv", index_col=0)
+prop = pd.read_csv(f"{RES}/V10S15-395_A1_cell_type_proportions.csv", index_col=0)
 assigned = sum(LINEAGE.values(), [])
 lin = pd.DataFrame({g: prop[[c for c in m if c in prop.columns]].sum(axis=1) for g, m in LINEAGE.items()},
                    index=prop.index)
 lin["Others"] = prop.drop(columns=[c for c in assigned if c in prop.columns]).sum(axis=1)
 lin = lin[CATS].div(lin[CATS].sum(axis=1), axis=0)
 
-roi = pd.read_csv("roi_myregion.csv")
+roi = pd.read_csv(f"{DATA}/annotations/V10S15-395_A1_RPG_ROI_loupe.csv")
 bcc = next(c for c in roi.columns if roi[c].astype(str).str.match(BC_RE).mean() > 0.8)
 ROI_BC = set(b if "-" in str(b) else f"{b}-1" for b in roi[bcc].astype(str).str.strip())
 
-ad = sc.read_h5ad(f"{RES}/A1_cell2location.h5ad")
+ad = sc.read_h5ad(f"{RES}/V10S15-395_A1_cell2location.h5ad")
 sf = json.load(open(f"{SPDIR}/scalefactors_json.json"))
 HE = np.asarray(Image.open(f"{SPDIR}/tissue_hires_image.png").convert("RGB"))
 H_hi, W_hi = HE.shape[:2]

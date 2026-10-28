@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 """Cluster GSE216476 (mouse SMG+SLG scRNA-seq, no author labels): QC, Leiden clustering (resolution 0.5) and per-cluster marker means for annotation. Cluster → cell-type assignment is done in 05_annotate_smg_slg_gse216476.py. Raw counts kept in .layers[‘counts’]."""
 import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
+import os
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 import warnings; warnings.filterwarnings("ignore")
 import numpy as np, pandas as pd, scanpy as sc
 
-TENX = "data/reference/GSE216476/tenx"
-OUT = "data/reference/GSE216476/slg_clustered.h5ad"
+TENX = f"{DATA}/reference/GSE216476/tenx"
+OUT = f"{DATA}/reference/GSE216476/slg_clustered.h5ad"
 sc.settings.verbosity = 1
 
 adata = sc.read_10x_mtx(TENX, var_names="gene_symbols")

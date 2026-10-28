@@ -2,6 +2,9 @@
 """Stacked ('piled') composition bars per gland (RPG / SMG / SLG), two panels:
 (A) overall lineage level, (B) cell-type level (coloured by lineage shade).
 From the decontaminated parotid-augmented cell2location proportions."""
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
 import os, warnings; warnings.filterwarnings("ignore")
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg")
@@ -11,14 +14,14 @@ import matplotlib.gridspec as gridspec
 from matplotlib.patches import Patch
 from matplotlib.colors import to_rgb
 
-OUT = "results/figures_parotid"; os.makedirs(OUT, exist_ok=True)
+OUT = f"{RESULTS}/figures_parotid"; os.makedirs(OUT, exist_ok=True)
 GLANDS = ["SLG", "RPG", "SMG"]
 
 # ---- composition table (mean proportion %) ----
-roi = pd.read_csv("roi_myregion.csv"); rpgbc = set(roi[roi.Gland == "RPG"]["Barcode"])
-A = pd.read_csv("results/A1_combined_parotid/A1_cell_type_proportions.csv", index_col=0)
-D = pd.read_csv("results/D1_combined_parotid/D1_cell_type_proportions.csv", index_col=0)
-gl = pd.read_csv("results/D1_cluster/D1_spot_glands.csv").set_index("barcode")["gland"]
+roi = pd.read_csv(f"{DATA}/annotations/V10S15-395_A1_RPG_ROI_loupe.csv"); rpgbc = set(roi[roi.Gland == "RPG"]["Barcode"])
+A = pd.read_csv(f"{DATA}/cell2location/V10S15-395_A1/V10S15-395_A1_cell_type_proportions.csv", index_col=0)
+D = pd.read_csv(f"{DATA}/cell2location/V13U19-349_D1/V13U19-349_D1_cell_type_proportions.csv", index_col=0)
+gl = pd.read_csv(f"{DATA}/annotations/V13U19-349_D1_gland_assignment.csv").set_index("barcode")["gland"]
 comp = pd.DataFrame({
     "RPG": A.loc[[b for b in A.index if b in rpgbc]].mean() * 100,
     "SMG": D.loc[[b for b in D.index if b in set(gl[gl == "SMG"].index)]].mean() * 100,

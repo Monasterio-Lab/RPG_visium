@@ -4,8 +4,8 @@
 Reads saved outputs  and the A1 Visium data (V10S15-395_A1). 
 
 Usage:
-    python make_fig2_source_data.py --source <source> --a1 <Oral/data/V10S15-395_A1>
-        --nmf <se.VAC.d0_NMF_spot_activity.csv> --out <dir>
+    python generate_figure_source_csv.py --zenodo <data/zenodo> --geo <data/geo> --out <dir>
+    --geo is the folder holding geo_A1/V10S15-395_A1 and geo_D1/V13U19-349_D1.
 Requires: scanpy 1.12.1, pandas, numpy, scipy, scikit-learn, statsmodels, Pillow.
 """
 import argparse, json, os, re
@@ -83,11 +83,11 @@ def fig2B(a, nmf, out, info):
 
 def fig2E_S9(d1, H, out, info):
     """Fig. 2E and Suppl. Fig. 9"""
-    prop = pd.read_csv(f"{H}/results/D1_combined_parotid/D1_cell_type_proportions.csv", index_col=0)
-    abund = pd.read_csv(f"{H}/results/D1_combined_parotid/D1_cell_abundances_q05.csv", index_col=0)
+    prop = pd.read_csv(f"{H}/cell2location/V13U19-349_D1/V13U19-349_D1_cell_type_proportions.csv", index_col=0)
+    abund = pd.read_csv(f"{H}/cell2location/V13U19-349_D1/V13U19-349_D1_cell_abundances_q05.csv", index_col=0)
     bcs = prop.index; assert list(bcs) == list(d1.adata.obs_names)
     lin = lin6(prop)
-    gl = pd.read_csv(f"{H}/results/D1_cluster/D1_spot_glands.csv").set_index("barcode")["gland"].reindex(bcs)
+    gl = pd.read_csv(f"{H}/annotations/V13U19-349_D1_gland_assignment.csv").set_index("barcode")["gland"].reindex(bcs)
     XY = d1.XY
     def rep_mean(gland):
         idx = np.where((gl == gland).to_numpy())[0]
@@ -113,12 +113,12 @@ def fig2E_S9(d1, H, out, info):
     return picks
 
 def roi_set(H):
-    return set(pd.read_csv(f"{H}/roi_myregion.csv")["Barcode"])
+    return set(pd.read_csv(f"{H}/annotations/V10S15-395_A1_RPG_ROI_loupe.csv")["Barcode"])
 
 def fig2F(a1, H, out, info):
     """Fig. 2F"""
     from sklearn.cluster import KMeans
-    prop = pd.read_csv(f"{H}/results/A1_combined_parotid/A1_cell_type_proportions.csv", index_col=0)
+    prop = pd.read_csv(f"{H}/cell2location/V10S15-395_A1/V10S15-395_A1_cell_type_proportions.csv", index_col=0)
     assert list(prop.index) == list(a1.adata.obs_names)
     lin = lin6(prop); ROI = roi_set(H)
     names = a1.adata.obs_names; in_roi = np.array([b in ROI for b in names]); idx = np.where(in_roi)[0]
@@ -145,9 +145,9 @@ def fig2F(a1, H, out, info):
 def fig2G(H, out, info):
     """Fig. 2G"""
     ROI = roi_set(H)
-    A = pd.read_csv(f"{H}/results/A1_combined_parotid/A1_cell_type_proportions.csv", index_col=0)
-    D = pd.read_csv(f"{H}/results/D1_combined_parotid/D1_cell_type_proportions.csv", index_col=0)
-    gl = pd.read_csv(f"{H}/results/D1_cluster/D1_spot_glands.csv").set_index("barcode")["gland"]
+    A = pd.read_csv(f"{H}/cell2location/V10S15-395_A1/V10S15-395_A1_cell_type_proportions.csv", index_col=0)
+    D = pd.read_csv(f"{H}/cell2location/V13U19-349_D1/V13U19-349_D1_cell_type_proportions.csv", index_col=0)
+    gl = pd.read_csv(f"{H}/annotations/V13U19-349_D1_gland_assignment.csv").set_index("barcode")["gland"]
     comp = pd.DataFrame({"SLG": D.loc[[b for b in D.index if b in set(gl[gl == "SLG"].index)]].mean() * 100,
                          "RPG": A.loc[[b for b in A.index if b in ROI]].mean() * 100,
                          "SMG": D.loc[[b for b in D.index if b in set(gl[gl == "SMG"].index)]].mean() * 100}).fillna(0)
@@ -160,8 +160,8 @@ def fig2G(H, out, info):
 
 def fig2HI_S10(a1, H, out, info):
     """Fig. 2H, 2I and Suppl. Fig. 10"""
-    prop = pd.read_csv(f"{H}/results/A1_combined_parotid/A1_cell_type_proportions.csv", index_col=0)
-    abund = pd.read_csv(f"{H}/results/A1_combined_parotid/A1_cell_abundances_q05.csv", index_col=0)
+    prop = pd.read_csv(f"{H}/cell2location/V10S15-395_A1/V10S15-395_A1_cell_type_proportions.csv", index_col=0)
+    abund = pd.read_csv(f"{H}/cell2location/V10S15-395_A1/V10S15-395_A1_cell_abundances_q05.csv", index_col=0)
     ROI = roi_set(H); names = a1.adata.obs_names; XY = a1.XY
     in_roi = np.array([b in ROI for b in names]); idx = np.where(in_roi)[0]; bcs = names[idx]; xy = XY[idx]
     padc = 0.35 * max(np.ptp(xy[:, 0]), np.ptp(xy[:, 1]))
@@ -182,7 +182,7 @@ def fig2HI_S10(a1, H, out, info):
 
 def fig2J(H, out, info):
     """Fig. 2J"""
-    g = sc.read_h5ad(f"{H}/results/glands_glandular/glands_glandular.h5ad")
+    g = sc.read_h5ad(f"{H}/integration/glandular_spots_RPG_SLG_SMG.h5ad")
     df = pd.DataFrame({"spot_id": g.obs_names, "section": g.obs["section"].astype(str).values,
                        "gland": g.obs["gland"].astype(str).values,
                        "UMAP1": g.obsm["X_umap"][:, 0], "UMAP2": g.obsm["X_umap"][:, 1]})
@@ -212,8 +212,8 @@ def s5B(d1, out, info):
 
 def s7A(H, out, info):
     """Suppl. Fig. 7A"""
-    R = pd.read_csv(f"{H}/HPA_analysis/tables/hpa_rna_nTPM_wide.csv", index_col=0)
-    P = pd.read_csv(f"{H}/HPA_analysis/tables/hpa_protein_IHC_wide.csv", index_col=0)
+    R = pd.read_csv(f"{H}/HPA/hpa_rna_nTPM_wide.csv", index_col=0)
+    P = pd.read_csv(f"{H}/HPA/hpa_protein_IHC_wide.csv", index_col=0)
     LV = {"Not detected": 0, "Low": 1, "Medium": 2, "High": 3}
     Pn = P.apply(lambda s: s.map(LV))
     keep = (R.max(1) >= 1) | (Pn.max(1) >= 1); R, P, Pn = R[keep], P[keep], Pn[keep]
@@ -229,7 +229,7 @@ def s7A(H, out, info):
 
 def s8(H, out, info):
     """Suppl. Fig. 8A/B and 8C"""
-    ref = sc.read_h5ad(f"{H}/data/reference/combined_parotid_ref.h5ad")
+    ref = sc.read_h5ad(f"{H}/reference/scRNA_reference_SMG_SLG_parotid.h5ad")
     ct2lin = {c: L for L, cs in LIN8.items() for c in cs}
     STUDY = {"GSE216476_mix": "GSE216476 - SMG/SLG (Huang et al. 2022)", "SMG_iScience": "GSE150327 - SMG (Hauser et al. 2020)",
              "GSE223516_parotid": "GSE223516 - Parotid (Rheinheimer et al. 2023)"}
@@ -286,7 +286,7 @@ def s11A(a1, H, out, info):
     for nm, gs in [("sal", SAL), ("muc", MUC), ("mus", MUS)]:
         sc.tl.score_genes(a, [g for g in gs if g in a.var_names], score_name=nm)
     gscore = a.obs["sal"] - a.obs["muc"] - a.obs["mus"]
-    g = sc.read_h5ad(f"{H}/results/glands_glandular/glands_glandular.h5ad", backed="r")
+    g = sc.read_h5ad(f"{H}/integration/glandular_spots_RPG_SLG_SMG.h5ad", backed="r")
     kept = {n[:-3] if n.endswith("-A1") else n for n in g.obs_names[g.obs["gland"] == "RPG"]}
     ROI = roi_set(H); names = a.obs_names
     df = a1.coords(names)
@@ -334,7 +334,7 @@ def s12AB(a1, H, out, info):
     PROX = ["Muc19", "Dcpp1", "Dcpp2", "Smgc", "Bpifb2", "Bpifb6", "Wfdc12", "Cgref1"]
     DIST = ["Lyz2", "Bpifb1", "Lipf"]
     a = a1.adata.copy(); sc.pp.normalize_total(a, target_sum=1e4); sc.pp.log1p(a)
-    g = sc.read_h5ad(f"{H}/results/glands_glandular/glands_glandular.h5ad", backed="r")
+    g = sc.read_h5ad(f"{H}/integration/glandular_spots_RPG_SLG_SMG.h5ad", backed="r")
     kept100 = set(b[:-3] if b.endswith("-A1") else b for b in g.obs_names[g.obs["gland"] == "RPG"])
     inroi = np.array([b in kept100 for b in a.obs_names])
     rbc0 = a.obs_names[inroi]; rxy0 = a1.spatial[inroi]
@@ -349,7 +349,7 @@ def s12AB(a1, H, out, info):
             if d < dm: dm, cb = d, c
         assign[i] = cb if dm <= 1.7 * nn else -9
     keep = assign != -9; rbc = rbc0[keep]; rxy = rxy0[keep]; regid = assign[keep]
-    prop = pd.read_csv(f"{H}/results/A1_combined_parotid/A1_cell_type_proportions.csv", index_col=0)
+    prop = pd.read_csv(f"{H}/cell2location/V10S15-395_A1/V10S15-395_A1_cell_type_proportions.csv", index_col=0)
     imm = [c for c in prop.columns if "immune" in c.lower() or "macrophage" in c.lower() or c.startswith("NK")]
     sz = pd.Series(regid).value_counts(); big = sz.idxmax(); oth = [c for c in cores if c != big]
     immv = {c: prop.loc[rbc[regid == c], imm].sum(1).mean() for c in oth}
@@ -407,15 +407,16 @@ def s12C(d1, out, info):
 # ---------------------------------------------------------------- main
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--source", required=True); ap.add_argument("--a1", required=True)
-    ap.add_argument("--nmf", required=True); ap.add_argument("--out", required=True)
+    ap.add_argument("--zenodo", required=True); ap.add_argument("--geo", required=True)
+    ap.add_argument("--out", required=True)
     ap.add_argument("--only", default="")
-    A = ap.parse_args(); os.makedirs(A.out, exist_ok=True); H = A.source; info = []
-    D1DIR = f"{H}/SMG:SLG_Outs/D1/outs"
-    a1 = Section(f"{A.a1}/filtered_feature_bc_matrix.h5", f"{A.a1}/spatial/tissue_positions_list.csv", f"{A.a1}/spatial", header=False)
+    A = ap.parse_args(); os.makedirs(A.out, exist_ok=True); H = A.zenodo; info = []
+    A1DIR = f"{A.geo}/geo_A1/V10S15-395_A1"; D1DIR = f"{A.geo}/geo_D1/V13U19-349_D1"
+    NMF = f"{H}/nmf/se.VAC.d0_NMF_spot_activity.csv"
+    a1 = Section(f"{A1DIR}/filtered_feature_bc_matrix.h5", f"{A1DIR}/spatial/tissue_positions_list.csv", f"{A1DIR}/spatial", header=False)
     d1 = Section(f"{D1DIR}/filtered_feature_bc_matrix.h5", f"{D1DIR}/spatial/tissue_positions.csv", f"{D1DIR}/spatial", header=True)
     s1(a1, A.out, info)
-    fig2B(a1, A.nmf, A.out, info); fig2E_S9(d1, H, A.out, info); fig2F(a1, H, A.out, info); fig2G(H, A.out, info)
+    fig2B(a1, NMF, A.out, info); fig2E_S9(d1, H, A.out, info); fig2F(a1, H, A.out, info); fig2G(H, A.out, info)
     fig2HI_S10(a1, H, A.out, info); fig2J(H, A.out, info); s5B(d1, A.out, info); s7A(H, A.out, info)
     ref, _, _ = s8(H, A.out, info); s11A(a1, H, A.out, info); s11B(a1, ref, H, A.out, info)
     s12AB(a1, H, A.out, info); s12C(d1, A.out, info)

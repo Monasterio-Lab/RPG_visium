@@ -6,6 +6,9 @@ showing kept (glandular) vs dropped (mucosa/muscle) spots; (3) zoom coloured by
 the glandularity score (sal - muc - mus) with the kept spots outlined.
 Spots are aligned to the hi-res image by the same image-size scale used in
 analysis/20 (the stored hires_scalef is stale)."""
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
 import os, re, json, sys, warnings; warnings.filterwarnings("ignore")
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 sys.path.insert(0, os.path.dirname(__file__))
@@ -17,17 +20,17 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from visium_io import load_visium_a1
 
-SPDIR = "VISIUM_outs/V10S15-395_A1/spatial"
-FIG = "results/figures_glands_glandular"; os.makedirs(FIG, exist_ok=True)
+SPDIR = f"{DATA}/VISIUM_outs/V10S15-395_A1/spatial"
+FIG = f"{RESULTS}/figures_glands_glandular"; os.makedirs(FIG, exist_ok=True)
 BC_RE = re.compile(r"^[ACGT]{8,}-?\d*$")
 
 # selected glandular RPG barcodes (strip the -A1 concat suffix)
-gl = sc.read_h5ad("results/glands_glandular/glands_glandular.h5ad")
+gl = sc.read_h5ad(f"{DATA}/integration/glandular_spots_RPG_SLG_SMG.h5ad")
 sel = {n[:-3] if n.endswith("-A1") else n for n in gl.obs_names[gl.obs.gland == "RPG"]}
 print(f"selected glandular RPG spots: {len(sel)}", flush=True)
 
 # RPG ROI barcodes
-roi = pd.read_csv("roi_myregion.csv")
+roi = pd.read_csv(f"{DATA}/annotations/V10S15-395_A1_RPG_ROI_loupe.csv")
 bcc = next(c for c in roi.columns if roi[c].astype(str).str.match(BC_RE).mean() > 0.8)
 ROI = set(b if "-" in str(b) else f"{b}-1" for b in roi[bcc].astype(str).str.strip())
 
@@ -111,5 +114,5 @@ plt.close()
 # export the selected barcodes + scores
 out = pd.DataFrame({"barcode": names[in_roi], "selected_glandular": in_sel[in_roi],
                     "glandscore": a1.obs["glandscore"][in_roi].values}).sort_values("glandscore", ascending=False)
-out.to_csv("results/glands_glandular/RPG_spot_selection.csv", index=False)
+out.to_csv(f"{RESULTS}/glands_glandular/RPG_spot_selection.csv", index=False)
 print("wrote glandular_spots_spatial.svg/.png and RPG_spot_selection.csv", flush=True)

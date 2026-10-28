@@ -4,6 +4,9 @@ Reads the filtered matrix + tissue positions manually and attaches the working
 lowres image into adata.uns['spatial'] so scanpy's sc.pl.spatial works with
 img_key='lowres'. Coordinate convention matches scanpy.read_visium:
 obsm['spatial'] = [pxl_col_in_fullres, pxl_row_in_fullres]."""
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
 import json, numpy as np, pandas as pd, scanpy as sc
 from PIL import Image
 
@@ -39,7 +42,7 @@ def load_visium(outs_dir, library_id, img_key="hires"):
     return adata
 
 
-def load_visium_a1(vis_dir="VISIUM_outs/V10S15-395_A1", library_id="A1"):
+def load_visium_a1(vis_dir=f"{DATA}/VISIUM_outs/V10S15-395_A1", library_id="A1"):
     adata = sc.read_10x_h5(f"{vis_dir}/filtered_feature_bc_matrix.h5")
     adata.var_names_make_unique()
 

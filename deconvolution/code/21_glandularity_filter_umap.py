@@ -7,10 +7,13 @@ Why this exact strategy: RPG has NO spatially separable pure-gland pocket — th
 mucosal/foregut score dominates the salivary score on every spot (mean 1.98 vs
 0.51) and salivary cells are admixed throughout. So 'genuinely glandular' is
 approached two ways together:
-  (1) spot-level: keep RPG spots with glandularity index (salivary − mucosal − muscle) > GLAND_THR; paper run GLAND_THR=-2.0 → 100 of 161 spots
+  (1) spot-level: keep RPG spots with glandularity index (salivary − mucosal − muscle) > GLAND_THR; default GLAND_THR=-2.0 (paper run) → 100 of 161 spots
   (2) gene-level: drop skeletal-muscle and mucosal/squamous/foregut genes
 SMG and SLG are kept whole. The section/depth batch confound still remains
 (RPG = section A1 only, ~5x deeper)."""
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
 import os, sys, json, time, urllib.request, warnings; warnings.filterwarnings("ignore")
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE"); os.environ.setdefault("OMP_NUM_THREADS", "4")
 sys.path.insert(0, os.path.dirname(__file__))
@@ -22,11 +25,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib_venn import venn3, venn3_circles
 
-RES = "results/glands_glandular"; FIG = "results/figures_glands_glandular"
+RES = f"{RESULTS}/glands_glandular"; FIG = f"{RESULTS}/figures_glands_glandular"
 os.makedirs(RES, exist_ok=True); os.makedirs(FIG, exist_ok=True)
 PAL = {"RPG": "#59A14F", "SMG": "#4E79A7", "SLG": "#E15759"}
 GLAND_N = int(os.environ.get("GLAND_N", "40"))
-GLAND_THR = os.environ.get("GLAND_THR")  # if set, threshold on glandscore instead of top-N
+GLAND_THR = os.environ.get("GLAND_THR", "-2.0")  # if set, threshold on glandscore instead of top-N
 PADJ, LFC = 0.05, 1.0
 RIBO_MT = r"^(Rp[sl]|mt-)"
 
@@ -38,7 +41,7 @@ MUS = ['Acta1','Actn2','Actn3','Myh1','Myh2','Myh3','Myh4','Myh7','Myh8','Myl1',
        'Mybpc2','Tnnt1','Tnnt3','Tnni1','Tnni2','Tnnc2','Ttn','Ckm','Ckmt2','Des','Mb','Pgam2',
        'Pvalb','Atp2a1','Casq1','Ryr1','Neb','Tcap','Myoz1','Tpm2','Ldb3','Smpx','Klhl41','Pygm','Eno3']
 
-comb = sc.read_h5ad("results/glands_compare/glands_combined.h5ad")
+comb = sc.read_h5ad(f"{RESULTS}/glands_compare/glands_combined.h5ad")
 
 # canonical glandularity score: computed on the FULL A1 section (identical to the
 # spatial map / threshold diagnostic), then applied to the combined RPG spots so a
@@ -84,7 +87,7 @@ import harmonypy
 ho = harmonypy.run_harmony(comb.obsm["X_pca"], comb.obs, ["section"])
 Z = np.asarray(ho.Z_corr); comb.obsm["X_pca_harmony"] = Z if Z.shape[0] == comb.n_obs else Z.T
 sc.pp.neighbors(comb, n_neighbors=15, n_pcs=30, use_rep="X_pca_harmony"); sc.tl.umap(comb)
-comb.write(f"{RES}/glands_glandular.h5ad")
+comb.write(f"{DATA}/integration/glandular_spots_RPG_SLG_SMG.h5ad")
 
 # ---- PCA variance + loadings + gland separation ----
 pc_var = pd.DataFrame({"PC": [f"PC{i+1}" for i in range(30)], "pct_variance": vr * 100,

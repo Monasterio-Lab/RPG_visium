@@ -8,6 +8,9 @@ where phi_z = native expression distribution of cluster z, b = ambient (soup)
 distribution, theta_c = native fraction. EM estimates theta_c and phi_z; the
 decontaminated count is x_cg * P(native). Needs no empty droplets.
 """
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
 import os, glob, tarfile, gzip, warnings; warnings.filterwarnings("ignore")
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 import numpy as np, pandas as pd, scanpy as sc, anndata as ad
@@ -16,14 +19,12 @@ import matplotlib; matplotlib.use("Agg")
 matplotlib.rcParams.update({"svg.fonttype": "none", "pdf.fonttype": 42})
 import matplotlib.pyplot as plt
 
-SCR = ("/private/tmp/claude-501/-Users-gustavomonasterio-Bioinformatics-Claude-"
-       "ORES-Deconvolution/07b953b0-c262-40ca-9e22-fc00d39fbd86/scratchpad")
-TAR = f"{SCR}/parotid_GSE223516_RAW.tar"; WORK = f"{SCR}/parotid_work"
+TAR = f"{DATA}/reference/GSE223516/GSE223516_RAW.tar"; WORK = f"{DATA}/reference/GSE223516/tenx"
 PREFIX = "GSM6957905_NonIR-PAR"
-FIG = "results/figures_parotid"; os.makedirs(FIG, exist_ok=True)
-OUT_PAR = "data/reference/parotid_ref.h5ad"
-OUT_COMB = "data/reference/combined_parotid_ref.h5ad"
-COMBINED_FULL = "data/reference/combined_full_ref.h5ad"
+FIG = f"{RESULTS}/figures_parotid"; os.makedirs(FIG, exist_ok=True)
+OUT_PAR = f"{DATA}/reference/parotid_ref.h5ad"
+OUT_COMB = f"{DATA}/reference/scRNA_reference_SMG_SLG_parotid.h5ad"
+COMBINED_FULL = f"{DATA}/reference/combined_full_ref.h5ad"
 
 # ---------- load control 10x (raw counts) ----------
 os.makedirs(WORK, exist_ok=True)

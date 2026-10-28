@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 """Stage A: estimate per-cell-type expression signatures with cell2location's
-negative-binomial regression model. CPU by default; GPU with ACCELERATOR=gpu. Paper run: REF_H5AD=data/reference/combined_parotid_ref.h5ad BATCH_KEY=study SIG_OUTDIR=results/reference_signatures_parotid.
+negative-binomial regression model. CPU by default; GPU with ACCELERATOR=gpu. Defaults are the paper run: reference data/reference/scRNA_reference_SMG_SLG_parotid.h5ad, BATCH_KEY=study; signatures written to data/reference/cell2location_reference_signatures.csv, model and plots to results/reference_signatures_parotid.
 
 NOTE: the os.environ guards MUST be set before numpy/torch import to avoid the
 macOS duplicate-OpenMP deadlock (torch + MKL both ship libomp)."""
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
 import os
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 os.environ.setdefault("OMP_NUM_THREADS", "4")
@@ -19,9 +22,9 @@ torch.set_num_threads(4)
 scvi.settings.seed = 0
 ACCEL = os.environ.get("ACCELERATOR", "cpu")  # "gpu" on the server
 
-REF = os.environ.get("REF_H5AD", "data/reference/adult_ref.h5ad")
-OUTDIR = os.environ.get("SIG_OUTDIR", "results/reference_signatures")
-BATCH_KEY = os.environ.get("BATCH_KEY") or None  # e.g. "study" for combined refs
+REF = os.environ.get("REF_H5AD", f"{DATA}/reference/scRNA_reference_SMG_SLG_parotid.h5ad")
+OUTDIR = os.environ.get("SIG_OUTDIR", f"{RESULTS}/reference_signatures_parotid")
+BATCH_KEY = os.environ.get("BATCH_KEY", "study") or None  # e.g. "study" for combined refs
 os.makedirs(OUTDIR, exist_ok=True)
 
 adata_ref = sc.read_h5ad(REF)
@@ -55,7 +58,7 @@ if "means_per_cluster_mu_fg" in adata_ref.varm:
 else:
     inf_aver = adata_ref.var[keys].copy()
 inf_aver.columns = adata_ref.uns["mod"]["factor_names"]
-inf_aver.to_csv(f"{OUTDIR}/cell_type_signatures.csv")
+inf_aver.to_csv(f"{DATA}/reference/cell2location_reference_signatures.csv")
 adata_ref.write(f"{OUTDIR}/adata_ref_signatures.h5ad")
 print("Signatures shape (genes x cell types):", inf_aver.shape, flush=True)
 print("Cell types:", list(inf_aver.columns), flush=True)

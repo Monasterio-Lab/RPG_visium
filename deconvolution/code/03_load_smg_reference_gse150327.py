@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 """Build a reference AnnData (raw counts + CellType) from the R-exported MM bundle."""
 import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
+import os
 import numpy as np
 import pandas as pd
 import scipy.io
 import scipy.sparse as sp
 import anndata as ad
 
-EXPORT = "data/reference/adult_export"
-OUT = "data/reference/adult_ref.h5ad"
+EXPORT = f"{DATA}/reference/adult_export"
+OUT = f"{DATA}/reference/adult_ref.h5ad"
 
 # counts.mtx is genes x cells -> transpose to cells x genes
 m = scipy.io.mmread(os.path.join(EXPORT, "counts.mtx")).tocsr().T.tocsr()

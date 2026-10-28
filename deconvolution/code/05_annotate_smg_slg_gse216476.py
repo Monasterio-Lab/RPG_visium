@@ -3,14 +3,17 @@
 cell type, report composition, and make a UMAP. Saves an annotated h5ad (raw
 counts kept) for building the full combined reference."""
 import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
+import os
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 import warnings; warnings.filterwarnings("ignore")
 import numpy as np, pandas as pd, scanpy as sc
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
 
-IN = "data/reference/GSE216476/slg_clustered.h5ad"
-OUTH5 = "data/reference/GSE216476/slg_annotated_full.h5ad"
-OUT = "results/combined_ref_qc"; os.makedirs(OUT, exist_ok=True)
+IN = f"{DATA}/reference/GSE216476/slg_clustered.h5ad"
+OUTH5 = f"{DATA}/reference/GSE216476/slg_annotated_full.h5ad"
+OUT = f"{RESULTS}/combined_ref_qc"; os.makedirs(OUT, exist_ok=True)
 
 # leiden cluster -> cell type (from marker diagnostics in step 10)
 CLUSTER_MAP = {

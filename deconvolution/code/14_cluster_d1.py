@@ -3,6 +3,9 @@
 Produces a spatial cluster map, a UMAP, per-cluster top markers and a panel of
 canonical SMG/SLG genes so the clusters can be labelled SMG vs SLG by hand.
 Outputs to results/D1_cluster/ and figures to results/figures_d1/."""
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
 import os, sys, warnings; warnings.filterwarnings("ignore")
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 os.environ.setdefault("OMP_NUM_THREADS", "4")
@@ -13,9 +16,9 @@ matplotlib.rcParams.update({"svg.fonttype": "none", "pdf.fonttype": 42})
 import matplotlib.pyplot as plt
 from visium_io import load_visium
 
-OUTS = "SMG:SLG_Outs/D1/outs"
+OUTS = f"{DATA}/VISIUM_outs/V13U19-349_D1"
 LIB = "D1"
-RES = "results/D1_cluster"; FIG = "results/figures_d1"
+RES = f"{RESULTS}/D1_cluster"; FIG = f"{RESULTS}/figures_d1"
 os.makedirs(RES, exist_ok=True); os.makedirs(FIG, exist_ok=True)
 RESOLUTION = float(os.environ.get("LEIDEN_RES", "0.6"))
 

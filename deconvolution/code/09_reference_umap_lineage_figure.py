@@ -3,8 +3,10 @@
 type (lineage-shaded), and by LINEAGE. Cell-type legend grouped under the
 lineage classifications used for the per-spot scatterpies. Loads the saved
 embedding (parotid_ref_embedded.h5ad) — no recompute."""
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
 import os, sys, warnings; warnings.filterwarnings("ignore")
-sys.path.insert(0, "analysis")
 import numpy as np, pandas as pd, scanpy as sc
 import matplotlib; matplotlib.use("Agg")
 matplotlib.rcParams.update({"svg.fonttype": "none", "pdf.fonttype": 42, "font.family": "DejaVu Sans"})
@@ -15,7 +17,7 @@ from matplotlib.patches import Rectangle
 from matplotlib.colors import to_rgb
 from rename_celltypes import rename_lineage
 
-OUT = "results/figures_parotid"
+OUT = f"{RESULTS}/figures_parotid"
 emb = sc.read_h5ad(f"{OUT}/parotid_ref_embedded.h5ad")
 if "X_umap_uncorr" not in emb.obsm:  # (re)build if missing
     os.system(f"{sys.executable} analysis/08_reference_umap_embedding.py")

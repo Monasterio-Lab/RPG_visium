@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 """Data-driven salivary enrichment score (no hand-picked genes): derive the
 signature from the top one-vs-rest DE markers of the six SMG/SLG acinar cell types in the reference (ducts excluded), then score A1 spots with it and compare RPG vs the rest of the section."""
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
 import os, re, sys, warnings; warnings.filterwarnings("ignore")
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 sys.path.insert(0, os.path.dirname(__file__))
@@ -15,8 +18,8 @@ from matplotlib.patches import Circle
 from matplotlib.collections import PatchCollection
 from visium_io import load_visium_a1
 
-REF = "data/reference/combined_parotid_ref.h5ad"; SPDIR = "VISIUM_outs/V10S15-395_A1/spatial"
-OUT = "results/figures_parotid"; BC_RE = re.compile(r"^[ACGT]{8,}-?\d*$")
+REF = f"{DATA}/reference/scRNA_reference_SMG_SLG_parotid.h5ad"; SPDIR = f"{DATA}/VISIUM_outs/V10S15-395_A1/spatial"
+OUT = f"{RESULTS}/figures_parotid"; BC_RE = re.compile(r"^[ACGT]{8,}-?\d*$")
 TOP_PER_TYPE = 20
 # SMG/SLG ACINAR (secretory) cell types — the salivary-SPECIFIC program (foregut
 # has no serous/mucous salivary acini). Ducts excluded: their top markers are
@@ -51,7 +54,7 @@ print(sig, flush=True)
 
 # ---- score A1 ----
 sc.tl.score_genes(a1, sig, score_name="sal_dd")
-roi = pd.read_csv("roi_myregion.csv")
+roi = pd.read_csv(f"{DATA}/annotations/V10S15-395_A1_RPG_ROI_loupe.csv")
 bcc = next(c for c in roi.columns if roi[c].astype(str).str.match(BC_RE).mean() > 0.8)
 ROI_BC = set(b if "-" in str(b) else f"{b}-1" for b in roi[bcc].astype(str).str.strip())
 grp = np.array(["RPG" if b in ROI_BC else "Non-glandular" for b in a1.obs_names])

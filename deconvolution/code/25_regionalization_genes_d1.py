@@ -2,7 +2,10 @@
 format as the ORES panel (column groups core/proximal/distal, boxed gene names,
 'Log2 Exp' colorbars). Colorbar maxima match the ORES panel for direct comparison;
 the maps are near-empty because these foregut/airway genes are absent from SMG/SLG."""
-import warnings, sys; warnings.filterwarnings("ignore"); sys.path.insert(0, "analysis")
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
+import warnings, sys; warnings.filterwarnings("ignore")
 import numpy as np, scanpy as sc
 import matplotlib; matplotlib.use("Agg")
 matplotlib.rcParams.update({"svg.fonttype": "none", "pdf.fonttype": 42,
@@ -12,13 +15,13 @@ from matplotlib.lines import Line2D
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 from visium_io import load_visium
-OUT = "results/figures_parotid"; BLUE = "#5B8FD4"
+OUT = f"{RESULTS}/figures_parotid"; BLUE = "#5B8FD4"
 # (gene, colorbar max) matching the ORES panel; layout: columns = groups, rows = 2 genes
 COLS = [("glandular core", [("Sbpl", 10), ("Gp2", 8)]),
         ("proximal", [("Bpifb2", 9), ("Bpifb6", 4)]),
         ("distal", [("Bpifb1", 12), ("Lipf", 8)])]
 
-d = load_visium("SMG:SLG_Outs/D1/outs", "D1", img_key="hires"); d.var_names_make_unique()
+d = load_visium(f"{DATA}/VISIUM_outs/V13U19-349_D1", "D1", img_key="hires"); d.var_names_make_unique()
 sc.pp.normalize_total(d, target_sum=1e4)
 XY = d.obsm["spatial"].astype(float)
 def log2e(g):

@@ -3,13 +3,16 @@
 on the H&E for confirmation. Default proposal: cluster 2 (top acinar lobe) = SLG,
 clusters 0/1/3 (duct-rich main body) = SMG. Override with env GLAND_MAP, e.g.
 GLAND_MAP='SLG:2;SMG:0,1,3'."""
+import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
 import os, warnings; warnings.filterwarnings("ignore")
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 import numpy as np, pandas as pd, scanpy as sc
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-RES = "results/D1_cluster"; FIG = "results/figures_d1"
+RES = f"{RESULTS}/D1_cluster"; FIG = f"{RESULTS}/figures_d1"
 adata = sc.read_h5ad(f"{RES}/D1_clustered.h5ad")
 
 spec = os.environ.get("GLAND_MAP", "SLG:2;SMG:0,1,3")
@@ -21,7 +24,7 @@ for part in spec.split(";"):
 adata.obs["gland"] = adata.obs["leiden"].astype(str).map(gland_of).astype("category")
 print("spots per gland:\n", adata.obs["gland"].value_counts().to_string(), flush=True)
 
-adata.obs[["leiden", "gland"]].rename_axis("barcode").to_csv(f"{RES}/D1_spot_glands.csv")
+adata.obs[["leiden", "gland"]].rename_axis("barcode").to_csv(f"{DATA}/annotations/V13U19-349_D1_gland_assignment.csv")
 
 pal = {"SMG": "#4E79A7", "SLG": "#E15759"}
 sc.pl.spatial(adata, color="gland", img_key="hires", size=1.5, show=False,

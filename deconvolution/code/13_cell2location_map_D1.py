@@ -3,6 +3,9 @@
 salivary reference onto D1 with cell2location. Mirror of 12_cell2location_map_A1.py but uses the
 general load_visium loader (D1 has a valid hires image + headered positions)."""
 import os
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, RESULTS = f"{ROOT}/data", f"{ROOT}/results"
+import os
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 os.environ.setdefault("OMP_NUM_THREADS", "8")
 os.environ.setdefault("MKL_NUM_THREADS", "8")
@@ -20,10 +23,10 @@ MAX_EPOCHS = int(os.environ.get("MAX_EPOCHS", "30000"))
 N_CELLS_PER_LOCATION = int(os.environ.get("N_CELLS_PER_LOCATION", "20"))
 DETECTION_ALPHA = float(os.environ.get("DETECTION_ALPHA", "20"))
 
-VIS_DIR = os.environ.get("VIS_DIR", "VISIUM_outs/D1/outs")
+VIS_DIR = os.environ.get("VIS_DIR", f"{DATA}/VISIUM_outs/V13U19-349_D1")
 LIBRARY = os.environ.get("LIBRARY_ID", "D1")
-SIG_CSV = os.environ.get("SIG_CSV", "results/reference_signatures_parotid/cell_type_signatures.csv")
-OUTDIR = os.environ.get("MAP_OUTDIR", "results/D1_combined_parotid")
+SIG_CSV = os.environ.get("SIG_CSV", f"{DATA}/reference/cell2location_reference_signatures.csv")
+OUTDIR = os.environ.get("MAP_OUTDIR", f"{DATA}/cell2location/V13U19-349_D1")
 os.makedirs(OUTDIR, exist_ok=True)
 
 inf_aver = pd.read_csv(SIG_CSV, index_col=0)
@@ -54,14 +57,14 @@ plt.savefig(f"{OUTDIR}/mapping_train_history.png", dpi=120, bbox_inches="tight")
 adata_vis = mod.export_posterior(
     adata_vis, sample_kwargs={"num_samples": 1000, "batch_size": mod.adata.n_obs})
 mod.save(f"{OUTDIR}/cell2location_model", overwrite=True)
-adata_vis.write(f"{OUTDIR}/{LIBRARY}_cell2location.h5ad")
+adata_vis.write(f"{OUTDIR}/V13U19-349_D1_cell2location.h5ad")
 
 abund = adata_vis.obsm["q05_cell_abundance_w_sf"].copy()
 abund.columns = [c.replace("q05cell_abundance_w_sf_", "") for c in abund.columns]
 abund.index = adata_vis.obs_names
-abund.to_csv(f"{OUTDIR}/{LIBRARY}_cell_abundances_q05.csv")
+abund.to_csv(f"{OUTDIR}/V13U19-349_D1_cell_abundances_q05.csv")
 prop = abund.div(abund.sum(axis=1), axis=0)
-prop.to_csv(f"{OUTDIR}/{LIBRARY}_cell_type_proportions.csv")
+prop.to_csv(f"{OUTDIR}/V13U19-349_D1_cell_type_proportions.csv")
 print("Mean proportion per cell type:", flush=True)
 print(prop.mean().sort_values(ascending=False).head(15), flush=True)
 print("Stage B (D1) done.", flush=True)

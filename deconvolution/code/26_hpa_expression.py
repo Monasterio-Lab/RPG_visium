@@ -1,7 +1,7 @@
 """Human Protein Atlas per-organ RNA and protein expression of the salivary
-glandular-backbone genes. Self-contained: fetches HPA data (cached under data/),
-writes the supplementary table (tables/) and the two-sided RNA-vs-protein figure
-(figures/). Run from anywhere:  python hpa_expression.py
+glandular-backbone genes. Self-contained: fetches HPA data (cached under data/HPA/raw/),
+writes the supplementary table and wide tables (data/HPA/) and the two-sided RNA-vs-protein figure
+(results/figures_HPA/). Run from anywhere:  python 26_hpa_expression.py
 
 Data source: Human Protein Atlas (https://www.proteinatlas.org), version 23.
 RNA = consensus tissue nTPM (search API); protein = antibody-based IHC score
@@ -19,8 +19,8 @@ from matplotlib.colors import Normalize
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 
-BASE = os.path.dirname(os.path.abspath(__file__))
-DATA, FIG, TAB = f"{BASE}/data", f"{BASE}/figures", f"{BASE}/tables"
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root; scripts live in code/
+DATA, FIG, TAB = f"{ROOT}/data/HPA/raw", f"{ROOT}/results/figures_HPA", f"{ROOT}/data/HPA"
 for d in (DATA, FIG, TAB): os.makedirs(d, exist_ok=True)
 
 # gene -> Ensembl gene id (human)
@@ -48,7 +48,7 @@ def _get(url):
 
 
 def fetch():
-    """Download RNA (nTPM) and protein (IHC) per organ; cache to data/."""
+    """Download RNA (nTPM) and protein (IHC) per organ; cache to data/HPA/raw/."""
     rna_csv, pro_csv = f"{DATA}/hpa_rna_tissue_nTPM.csv", f"{DATA}/hpa_protein_tissue_ihc.csv"
     if os.path.exists(rna_csv) and os.path.exists(pro_csv):
         return pd.read_csv(rna_csv), pd.read_csv(pro_csv)
