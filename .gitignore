@@ -1,5 +1,6 @@
 # Data
 data/
 TODO.md
-.DS_store
+.DS_Store
 figure_source_csv/
+results/

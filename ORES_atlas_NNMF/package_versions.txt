@@ -1,0 +1,5 @@
+R 4.2.1
+SeuratObject 4.1.0
+STutility v0.1.0
+Seurat 4.1.1
+sctransform 0.3.4
